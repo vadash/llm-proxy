@@ -146,6 +146,54 @@ describe("handleRouterRequest", () => {
     expect(res.headers.get("Access-Control-Allow-Origin")).toBe("*");
   });
 
+  it("strips trailing slash from decoded URL when constructing target URL", async () => {
+    const env = makeEnv();
+    const encodedWithSlash = encodeBase64Url("https://api.openai.com/v1/");
+    const req = new Request(
+      `http://router/test-auth-key/0/${encodedWithSlash}/chat/completions`,
+      { method: "POST", body: '{"model":"gpt-4"}' },
+    );
+    await handleRouterRequest(req, env, {} as ExecutionContext);
+
+    const proxy = env.PROXY_1 as { fetch: ReturnType<typeof vi.fn> };
+    const forwarded = proxy.fetch.mock.calls[0][0] as Request;
+    expect(forwarded.headers.get("X-Target-URL")).toBe(
+      "https://api.openai.com/v1/chat/completions",
+    );
+  });
+
+  it("does not add trailing slash when extra path is empty", async () => {
+    const env = makeEnv();
+    const encodedNoSlash = encodeBase64Url("https://api.openai.com/v1");
+    const req = new Request(
+      `http://router/test-auth-key/0/${encodedNoSlash}`,
+      { method: "GET" },
+    );
+    await handleRouterRequest(req, env, {} as ExecutionContext);
+
+    const proxy = env.PROXY_1 as { fetch: ReturnType<typeof vi.fn> };
+    const forwarded = proxy.fetch.mock.calls[0][0] as Request;
+    expect(forwarded.headers.get("X-Target-URL")).toBe(
+      "https://api.openai.com/v1",
+    );
+  });
+
+  it("does not add trailing slash when decoded URL has trailing slash and no extra path", async () => {
+    const env = makeEnv();
+    const encodedWithSlash = encodeBase64Url("https://api.openai.com/v1/");
+    const req = new Request(
+      `http://router/test-auth-key/0/${encodedWithSlash}`,
+      { method: "GET" },
+    );
+    await handleRouterRequest(req, env, {} as ExecutionContext);
+
+    const proxy = env.PROXY_1 as { fetch: ReturnType<typeof vi.fn> };
+    const forwarded = proxy.fetch.mock.calls[0][0] as Request;
+    expect(forwarded.headers.get("X-Target-URL")).toBe(
+      "https://api.openai.com/v1",
+    );
+  });
+
   it("returns the proxy response to the client", async () => {
     const upstream = new Response(JSON.stringify({ choices: [] }), {
       status: 200,

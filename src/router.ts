@@ -48,8 +48,9 @@ export async function handleRouterRequest(
     return errorResponse("Invalid target URL", 400);
   }
 
+  const decodedUrlClean = decodedUrl.replace(/\/+$/, "");
   const extraPath = segments.slice(4).join("/");
-  const targetUrl = decodedUrl + "/" + extraPath;
+  const targetUrl = extraPath ? `${decodedUrlClean}/${extraPath}` : decodedUrlClean;
 
   const proxyCount = Number(env.PROXY_COUNT);
   const proxyIndex = proxyNum % proxyCount;
