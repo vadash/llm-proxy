@@ -63,6 +63,10 @@ export async function handleRouterRequest(
       : await request.text();
 
   const headers = new Headers();
+  for (const name of ["authorization", "content-type", "accept"]) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value);
+  }
   headers.set("X-Internal-Auth", env.AUTH_KEY);
   headers.set("X-Target-URL", targetUrl);
   headers.set("X-Original-Method", method);
