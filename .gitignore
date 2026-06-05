@@ -1,4 +1,7 @@
-
 /logs/
 
 nul
+
+node_modules/
+.wrangler/
+dist/
