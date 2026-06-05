@@ -141,6 +141,7 @@ function generateRouterToml(proxyCount: number, internalSecret: string, authKey:
 			AUTH_KEY: authKey,
 			INTERNAL_AUTH_SECRET: internalSecret,
 			PROXY_COUNT: String(proxyCount),
+			ROUTER_DOMAIN: ROUTER_DOMAIN,
 		},
 		services,
 	};

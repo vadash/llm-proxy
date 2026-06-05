@@ -1,9 +1,10 @@
 import { decodeBase64Url } from "./base64url";
 import { corsResponse, errorResponse } from "./http";
+import { publicPage } from "./public";
 
 export async function handleRouterRequest(
   request: Request,
-  env: { AUTH_KEY: string; PROXY_COUNT: string; [key: string]: unknown },
+  env: { AUTH_KEY: string; PROXY_COUNT: string; ROUTER_DOMAIN: string; [key: string]: unknown },
   _ctx: ExecutionContext,
 ): Promise<Response> {
   if (request.method === "OPTIONS") {
@@ -12,6 +13,11 @@ export async function handleRouterRequest(
 
   const url = new URL(request.url);
   const segments = url.pathname.split("/");
+
+  if (request.method === "GET" && (segments.length <= 1 || segments[1] === "")) {
+    return publicPage(env.ROUTER_DOMAIN || url.hostname);
+  }
+
   const pass = segments[1];
   if (pass !== env.AUTH_KEY) {
     return errorResponse("Forbidden", 403);
