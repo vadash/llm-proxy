@@ -6,8 +6,7 @@ const projectRoot = path.resolve(import.meta.dirname, "..");
 
 const DIST_DIR = path.join(projectRoot, "dist");
 
-const PROXY_COUNT = 3;
-const ROUTER_DOMAIN = "router.example.com";
+const DEFAULT_PROXY_COUNT = 3;
 
 const DEPLOY_CONFIG = {
 	maxRetries: 3,
@@ -122,7 +121,7 @@ function generateProxyToml(index: number, internalSecret: string): string {
 	return tomlStringify(config);
 }
 
-function generateRouterToml(proxyCount: number, internalSecret: string, authKey: string): string {
+function generateRouterToml(proxyCount: number, internalSecret: string, authKey: string, routerDomain: string): string {
 	const services: Record<string, unknown>[] = [];
 	for (let i = 1; i <= proxyCount; i++) {
 		services.push({
@@ -135,13 +134,13 @@ function generateRouterToml(proxyCount: number, internalSecret: string, authKey:
 		name: "llm-proxy-router",
 		main: "../src/worker.ts",
 		compatibility_date: "2024-12-01",
-		routes: [{ pattern: ROUTER_DOMAIN, custom_domain: true }],
+		routes: [{ pattern: routerDomain, custom_domain: true }],
 		vars: {
 			WORKER_ROLE: "router",
 			AUTH_KEY: authKey,
 			INTERNAL_AUTH_SECRET: internalSecret,
 			PROXY_COUNT: String(proxyCount),
-			ROUTER_DOMAIN: ROUTER_DOMAIN,
+			ROUTER_DOMAIN: routerDomain,
 		},
 		services,
 	};
@@ -246,10 +245,11 @@ async function main() {
 
 	const authKey = requireEnv("AUTH_KEY", 8);
 	const internalSecret = requireEnv("INTERNAL_AUTH_SECRET", 32);
-	const proxyCount = Number(process.env.PROXY_COUNT) || PROXY_COUNT;
+	const routerDomain = requireEnv("ROUTER_DOMAIN", 1);
+	const proxyCount = Number(process.env.PROXY_COUNT) || DEFAULT_PROXY_COUNT;
 
 	console.log(`🚀 Deploying ${proxyCount} proxies + router`);
-	console.log(`   Domain: ${ROUTER_DOMAIN}`);
+	console.log(`   Domain: ${routerDomain}`);
 
 	if (!fs.existsSync(DIST_DIR)) {
 		fs.mkdirSync(DIST_DIR, { recursive: true });
@@ -277,7 +277,7 @@ async function main() {
 	}
 
 	// Generate and deploy router
-	const routerToml = generateRouterToml(proxyCount, internalSecret, authKey);
+	const routerToml = generateRouterToml(proxyCount, internalSecret, authKey, routerDomain);
 	const routerConfigPath = path.join(DIST_DIR, "router.toml");
 	fs.writeFileSync(routerConfigPath, routerToml);
 	const routerWorker: WorkerConfig = { name: "llm-proxy-router", configPath: routerConfigPath, type: "router" };
@@ -295,7 +295,7 @@ async function main() {
 	}
 
 	console.log(`\n✅ All systems operational.`);
-	console.log(`   Router: https://${ROUTER_DOMAIN}`);
+	console.log(`   Router: https://${routerDomain}`);
 	console.log(`   Configs: ${DIST_DIR}`);
 }
 

@@ -14,13 +14,13 @@ export async function handleRouterRequest(
   const url = new URL(request.url);
   const segments = url.pathname.split("/");
 
-  if (request.method === "GET" && (segments.length <= 1 || segments[1] === "")) {
-    return publicPage(env.ROUTER_DOMAIN || url.hostname);
-  }
-
   const pass = segments[1];
   if (pass !== env.AUTH_KEY) {
     return errorResponse("Forbidden", 403);
+  }
+
+  if (request.method === "GET" && !segments[2]) {
+    return publicPage(env.ROUTER_DOMAIN || url.hostname, env.AUTH_KEY);
   }
 
   const proxyNumRaw = segments[2];

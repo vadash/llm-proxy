@@ -5,7 +5,7 @@ Rotate exit IPs across multiple Cloudflare Workers so a single machine can use m
 ## How it works
 
 ```
-Client → Router Worker → Proxy Worker #N → Upstream API
+Client -> Router Worker -> Proxy Worker #N -> Upstream API
 ```
 
 1. You send a request to the router with a password, a proxy number, and the target URL (base64-encoded).
@@ -13,7 +13,7 @@ Client → Router Worker → Proxy Worker #N → Upstream API
 3. The proxy worker strips all identifying headers, injects a deterministic fake IP, and calls the upstream API.
 4. The response (including SSE streams) passes through untouched.
 
-Each proxy worker gets a unique but stable fake IP per upstream domain — no storage, no state.
+Each proxy worker gets a unique but stable fake IP per upstream domain -- no storage, no state.
 
 ## URL Format
 
@@ -40,6 +40,10 @@ Content-Type: application/json
 
 Decoded: proxy #3 calls `https://api.openai.com/v1/chat/completions` with your key and a stable fake IP.
 
+## URL Encoder Helper
+
+Navigate to `https://router.example.com/{PASSWORD}` in a browser to get a client-side URL encoder page. It's behind auth so you can bookmark it. The page shows your real password in the generated URLs.
+
 ## Headers
 
 **Passed through to upstream:** `Authorization`, `Content-Type`, `Accept`, request body.
@@ -52,7 +56,7 @@ Decoded: proxy #3 calls `https://api.openai.com/v1/chat/completions` with your k
 
 ```bash
 cp .env.example .env
-# Edit .env — set AUTH_KEY and INTERNAL_AUTH_SECRET
+# Edit .env -- set AUTH_KEY and INTERNAL_AUTH_SECRET
 npm install
 ```
 
@@ -99,9 +103,10 @@ npm run dev       # Local dev server
 
 ```
 src/
-  worker.ts     Entry point — dispatches by WORKER_ROLE
-  router.ts     Auth, proxy selection, URL decode
+  worker.ts     Entry point -- dispatches by WORKER_ROLE
+  router.ts     Auth, proxy selection, URL decode, encoder page
   proxy.ts      Header strip, fake IP injection, upstream call
+  public.ts     URL encoder helper page (behind auth)
   fake-ip.ts    SHA-256 based deterministic IP generation
   base64url.ts  URL-safe base64 encode/decode
   http.ts       Response helpers (CORS, error JSON)

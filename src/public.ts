@@ -1,4 +1,4 @@
-export function publicPage(routerDomain: string): Response {
+export function publicPage(routerDomain: string, authKey: string): Response {
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,11 +18,6 @@ export function publicPage(routerDomain: string): Response {
   .result { margin-top: 1rem; padding: .75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; font-family: monospace; font-size: .85rem; word-break: break-all; color: var(--accent); cursor: pointer; position: relative; user-select: all; }
   .result:hover { border-color: var(--accent); }
   .hint { color: var(--muted); font-size: .75rem; margin-top: .5rem; text-align: center; }
-  .segment { color: var(--muted); }
-  .segment.pass { color: #f0883e; }
-  .segment.num { color: #a5d6ff; }
-  .segment.b64 { color: #7ee787; }
-  .segment.path { color: #d2a8ff; }
 </style>
 </head>
 <body>
@@ -44,7 +39,7 @@ export function publicPage(routerDomain: string): Response {
 
   <label>Full proxy URL</label>
   <div class="result" id="full" onclick="copyText(this)">—</div>
-  <p class="hint">Click to select — replace <span style="color:#f0883e">{YOUR_PASSWORD}</span> with your actual password.</p>
+  <p class="hint">Click to select. Already authenticated — URL is ready to copy.</p>
 </div>
 <script>
 const $=s=>document.getElementById(s);
@@ -60,7 +55,7 @@ function update(){
   const p=path.value.trim();
   const n=proxy.value||"1";
   const suffix=p?"/"+p:"";
-  full.textContent="https://${routerDomain}/{YOUR_PASSWORD}/"+n+"/"+e+suffix;
+  full.textContent="https://${routerDomain}/${authKey}/"+n+"/"+e+suffix;
 }
 base.addEventListener("input",update);
 path.addEventListener("input",update);

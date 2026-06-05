@@ -1,37 +1,39 @@
-# AGENTS.md — Developer Guide
+# AGENTS.md -- Developer Guide
 
 ## Architecture
 
 Single codebase, dual-role workers dispatched by `WORKER_ROLE` env var:
 
-- **Router** (`src/router.ts`) — public endpoint. Validates AUTH_KEY from URL path, decodes base64 target URL, selects proxy via `PROXY_NUM % PROXY_COUNT`, forwards via service binding with `X-Internal-Auth` / `X-Target-URL` / `X-Original-Method` headers.
-- **Proxy** (`src/proxy.ts`) — no public route. Validates `X-Internal-Auth`, generates fake IP from `SHA-256(proxy_index + domain)`, strips identity headers, passes through `Authorization`/`Content-Type`/`Accept` and body untouched, streams response back.
+- **Router** (`src/router.ts`) -- public endpoint. Validates AUTH_KEY from URL path, decodes base64 target URL, selects proxy via `PROXY_NUM % PROXY_COUNT`, forwards via service binding with `X-Internal-Auth` / `X-Target-URL` / `X-Original-Method` headers. Serves URL encoder page at `GET /{AUTH_KEY}` (behind auth).
+- **Proxy** (`src/proxy.ts`) -- no public route. Validates `X-Internal-Auth`, generates fake IP from `SHA-256(proxy_index + domain)`, strips identity headers, passes through `Authorization`/`Content-Type`/`Accept` and body untouched, streams response back.
 
-Entry point is `src/worker.ts` — a switch on `env.WORKER_ROLE` that delegates to the correct handler.
+Entry point is `src/worker.ts` -- a switch on `env.WORKER_ROLE` that delegates to the correct handler.
 
 ## Key design constraints
 
-- No body parsing — pure pass-through
-- No credential storage — client provides its own API key
+- No body parsing -- pure pass-through
+- No credential storage -- client provides its own API key
 - No Durable Objects, no KV, no state
-- URL-safe base64 only (RFC 4648 §5)
-- Fake IPs are deterministic: `SHA-256(proxy_index + domain)[0:4]` → IPv4
+- URL-safe base64 only (RFC 4648 sec.5)
+- Fake IPs are deterministic: `SHA-256(proxy_index + domain)[0:4]` -> IPv4
+- Encoder page is behind auth (same AUTH_KEY as proxy routing)
 
 ## Auth flow
 
 1. Client sends password in URL path segment 1
 2. Router checks it against `AUTH_KEY` env var
-3. Router forwards to proxy with `X-Internal-Auth` = `INTERNAL_AUTH_SECRET`
-4. Proxy validates `X-Internal-Auth` against its own `INTERNAL_AUTH_SECRET`
+3. If no further path segments and GET -> serve encoder page with real password shown
+4. Router forwards to proxy with `X-Internal-Auth` = `INTERNAL_AUTH_SECRET`
+5. Proxy validates `X-Internal-Auth` against its own `INTERNAL_AUTH_SECRET`
 
-Both values come from `.env`. Proxy workers have no public routes — service binding only.
+Both values come from `.env`. Proxy workers have no public routes -- service binding only.
 
 ## Deployment
 
 `npm run deploy` runs `scripts/deploy.ts` which:
 
-1. Loads `.env` (validates AUTH_KEY ≥8 chars, INTERNAL_AUTH_SECRET ≥32 chars)
-2. Generates TOML configs into `dist/` — one per proxy + router
+1. Loads `.env` (validates AUTH_KEY >=8 chars, INTERNAL_AUTH_SECRET >=32 chars)
+2. Generates TOML configs into `dist/` -- one per proxy + router
 3. Deploys proxies in parallel (staggered 1s apart)
 4. Deploys router last (depends on proxy service bindings)
 5. Retries failed deploys up to 3x with exponential backoff (2s, 4s, 8s)
@@ -43,11 +45,11 @@ Router gets custom domain `router.example.com` via Cloudflare.
 ## Testing
 
 ```bash
-npm test           # vitest — 45 unit + integration tests
+npm test           # vitest -- unit + integration tests
 npm run type-check # tsc --noEmit
 ```
 
-Tests use mocked service bindings (`vi.fn()`) for router→proxy calls. Integration test (`tests/integration/full-flow.test.ts`) covers the full pipeline.
+Tests use mocked service bindings (`vi.fn()`) for router->proxy calls. Integration test (`tests/integration/full-flow.test.ts`) covers the full pipeline.
 
 ## Modifying the proxy count
 
@@ -60,9 +62,10 @@ Tests use mocked service bindings (`vi.fn()`) for router→proxy calls. Integrat
 | File | Purpose |
 |---|---|
 | `src/worker.ts` | Entry: dispatch by WORKER_ROLE |
-| `src/router.ts` | Auth + URL decode + proxy selection |
+| `src/router.ts` | Auth + URL decode + proxy selection + encoder page routing |
 | `src/proxy.ts` | Internal auth + header strip + fake IP + upstream fetch |
-| `src/fake-ip.ts` | `SHA-256(index + domain)` → deterministic IPv4 |
+| `src/public.ts` | URL encoder helper HTML page (behind auth) |
+| `src/fake-ip.ts` | `SHA-256(index + domain)` -> deterministic IPv4 |
 | `src/base64url.ts` | URL-safe base64 encode/decode |
 | `src/http.ts` | CORS headers, JSON/error response helpers |
 | `scripts/deploy.ts` | Generate TOML + deploy all workers |

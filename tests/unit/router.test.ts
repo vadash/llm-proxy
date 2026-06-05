@@ -2,6 +2,8 @@ import { describe, it, expect, vi } from "vitest";
 import { handleRouterRequest } from "../../src/router";
 import { encodeBase64Url } from "../../src/base64url";
 
+const AUTH_KEY = "test-auth-key";
+
 function makeProxyBinding(response?: Response) {
   return {
     fetch: vi.fn().mockResolvedValue(
@@ -12,7 +14,7 @@ function makeProxyBinding(response?: Response) {
 
 function makeEnv(overrides: Record<string, unknown> = {}) {
   return {
-    AUTH_KEY: "test-auth-key",
+    AUTH_KEY,
     INTERNAL_AUTH_SECRET: "test-internal-secret-32-chars-long!!",
     PROXY_COUNT: "3",
     PROXY_1: makeProxyBinding(),
@@ -206,5 +208,39 @@ describe("handleRouterRequest", () => {
     const res = await handleRouterRequest(req, env, {} as ExecutionContext);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ choices: [] });
+  });
+
+  it("serves encoder page on GET /{AUTH_KEY} with no further segments", async () => {
+    const env = makeEnv();
+    const req = new Request(`http://router/${AUTH_KEY}`);
+    const res = await handleRouterRequest(req, env, {} as ExecutionContext);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("text/html; charset=utf-8");
+    const body = await res.text();
+    expect(body).toContain("LLM Proxy URL Encoder");
+    expect(body).toContain(AUTH_KEY);
+    expect(body).not.toContain("{YOUR_PASSWORD}");
+  });
+
+  it("serves encoder page on GET /{AUTH_KEY}/", async () => {
+    const env = makeEnv();
+    const req = new Request(`http://router/${AUTH_KEY}/`);
+    const res = await handleRouterRequest(req, env, {} as ExecutionContext);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("text/html; charset=utf-8");
+  });
+
+  it("returns 403 for GET / without auth", async () => {
+    const env = makeEnv();
+    const req = new Request("http://router/");
+    const res = await handleRouterRequest(req, env, {} as ExecutionContext);
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 403 for GET / with wrong password", async () => {
+    const env = makeEnv();
+    const req = new Request("http://router/wrong-pass");
+    const res = await handleRouterRequest(req, env, {} as ExecutionContext);
+    expect(res.status).toBe(403);
   });
 });
