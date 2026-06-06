@@ -1,3 +1,20 @@
+export const PASSTHROUGH_HEADERS = [
+  "authorization",
+  "content-type",
+  "accept",
+  "x-api-key",
+  "anthropic-version",
+] as const;
+
+export function filterPassthroughHeaders(source: Headers): Headers {
+  const out = new Headers();
+  for (const name of PASSTHROUGH_HEADERS) {
+    const value = source.get(name);
+    if (value) out.set(name, value);
+  }
+  return out;
+}
+
 export const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",

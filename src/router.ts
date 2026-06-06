@@ -1,5 +1,5 @@
 import { decodeBase64Url } from "./base64url";
-import { corsResponse, errorResponse } from "./http";
+import { corsResponse, errorResponse, filterPassthroughHeaders } from "./http";
 import { publicPage } from "./public";
 
 export async function handleRouterRequest(
@@ -69,11 +69,7 @@ export async function handleRouterRequest(
       ? undefined
       : await request.text();
 
-  const headers = new Headers();
-  for (const name of ["authorization", "content-type", "accept"]) {
-    const value = request.headers.get(name);
-    if (value) headers.set(name, value);
-  }
+  const headers = filterPassthroughHeaders(request.headers);
   headers.set("X-Internal-Auth", env.INTERNAL_AUTH_SECRET as string);
   headers.set("X-Target-URL", targetUrl);
   headers.set("X-Original-Method", method);

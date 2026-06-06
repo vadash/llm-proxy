@@ -1,19 +1,5 @@
 import { generateFakeIp } from "./fake-ip";
-import { CORS_HEADERS, errorResponse } from "./http";
-
-const ALLOWED_HEADERS = ["authorization", "content-type", "accept"];
-
-const HEADERS_TO_STRIP = new Set([
-  "cf-connecting-ip",
-  "cf-ray",
-  "cf-visitor",
-  "cf-ipcountry",
-  "x-real-ip",
-  "host",
-  "x-internal-auth",
-  "x-target-url",
-  "x-original-method",
-]);
+import { CORS_HEADERS, errorResponse, filterPassthroughHeaders } from "./http";
 
 export async function handleProxyRequest(
   request: Request,
@@ -39,13 +25,7 @@ export async function handleProxyRequest(
   const proxyIndex = Number(env.PROXY_INDEX);
   const fakeIp = await generateFakeIp(proxyIndex, domain);
 
-  const upstreamHeaders = new Headers();
-  for (const [key, value] of request.headers.entries()) {
-    const lower = key.toLowerCase();
-    if (ALLOWED_HEADERS.includes(lower)) {
-      upstreamHeaders.set(key, value);
-    }
-  }
+  const upstreamHeaders = filterPassthroughHeaders(request.headers);
   upstreamHeaders.set("Host", domain);
   upstreamHeaders.set("X-Forwarded-For", fakeIp);
 
