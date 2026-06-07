@@ -1,4 +1,5 @@
 import { decodeBase64Url } from "./base64url";
+import { constructTargetUrl } from "./url-normalize";
 import { corsResponse, errorResponse, filterPassthroughHeaders } from "./http";
 import { publicPage } from "./public";
 
@@ -48,9 +49,8 @@ export async function handleRouterRequest(
     return errorResponse("Invalid target URL", 400);
   }
 
-  const decodedUrlClean = decodedUrl.replace(/\/+$/, "");
   const extraPath = segments.slice(4).join("/");
-  const targetUrl = extraPath ? `${decodedUrlClean}/${extraPath}` : decodedUrlClean;
+  const targetUrl = constructTargetUrl(decodedUrl, extraPath);
 
   const proxyCount = Number(env.PROXY_COUNT);
   const proxyIndex = proxyNum % proxyCount;
