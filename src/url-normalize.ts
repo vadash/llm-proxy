@@ -2,10 +2,16 @@ function normalizeChatCompletionsPath(pathname: string): string {
   if (!pathname.includes("chat") || !pathname.includes("completions")) {
     return pathname;
   }
-  // Remove all version segments (/v1, /v2, etc.) from the path
-  const withoutVersion = pathname.replace(/\/v\d+/g, "");
-  // Add single /v1 at the start
-  return `/v1${withoutVersion}`;
+  // Already has /v{N} directly before chat/completions → normalize to /v1
+  if (/\/v\d+(?=\/chat\/completions)/.test(pathname)) {
+    return pathname.replace(/\/v\d+\/chat\/completions/, "/v1/chat/completions");
+  }
+  // Has a version elsewhere (e.g. /v1beta/openai/) → leave alone
+  if (/\/v\d+/.test(pathname)) {
+    return pathname;
+  }
+  // No version at all → insert /v1 right before chat/completions
+  return pathname.replace(/\/chat\/completions/, "/v1/chat/completions");
 }
 
 export function normalizeUrl(targetUrl: string): string {
